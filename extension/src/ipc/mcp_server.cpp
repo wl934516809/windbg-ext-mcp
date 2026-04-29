@@ -195,8 +195,8 @@ void MCPServer::HandleClient(std::shared_ptr<ClientConnection> client) {
                 client->outgoingMessages.pop();
                 lock.unlock();
                 
-                // Serialize the message
-                std::string messageStr = message.dump() + "\n";
+                // Serialize the message (replace invalid UTF-8 instead of throwing)
+                std::string messageStr = message.dump(-1, ' ', false, json::error_handler_t::replace) + "\n";
                 
                 // Send the message
                 DWORD bytesWritten;
@@ -278,8 +278,8 @@ void MCPServer::HandleClient(std::shared_ptr<ClientConnection> client) {
                 // Process the message
                 json response = ProcessMessage(jsonMessage);
                 
-                // Send the response to this client
-                std::string responseStr = response.dump() + "\n";
+                // Send the response to this client (replace invalid UTF-8 instead of throwing)
+                std::string responseStr = response.dump(-1, ' ', false, json::error_handler_t::replace) + "\n";
                 DWORD bytesWritten;
                 success = WriteFile(
                     client->hPipe,            // Pipe handle
@@ -304,7 +304,7 @@ void MCPServer::HandleClient(std::shared_ptr<ClientConnection> client) {
                     {"error_message", std::string("Error processing message: ") + e.what()}
                 };
                 
-                std::string errorStr = errorResponse.dump() + "\n";
+                std::string errorStr = errorResponse.dump(-1, ' ', false, json::error_handler_t::replace) + "\n";
                 DWORD bytesWritten;
                 WriteFile(
                     client->hPipe,          // Pipe handle

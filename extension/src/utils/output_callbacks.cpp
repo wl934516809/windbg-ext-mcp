@@ -6,6 +6,29 @@
 #include "utils/output_callbacks.h"
 #include <algorithm>
 
+// Convert a system ANSI (CP_ACP) string to UTF-8.
+// WinDbg output callbacks deliver PCSTR in the process ANSI codepage, which on
+// Chinese Windows is GBK/CP936.  nlohmann/json requires all string values to be
+// valid UTF-8, so we must convert before storing the text.
+static std::string AnsiToUtf8(const char* ansiStr) {
+    if (!ansiStr || *ansiStr == '\0') return {};
+
+    // Step 1: ANSI → UTF-16
+    int wLen = MultiByteToWideChar(CP_ACP, 0, ansiStr, -1, nullptr, 0);
+    if (wLen <= 0) return ansiStr; // conversion failed – return as-is (best effort)
+
+    std::wstring wide(wLen - 1, L'\0');
+    MultiByteToWideChar(CP_ACP, 0, ansiStr, -1, &wide[0], wLen);
+
+    // Step 2: UTF-16 → UTF-8
+    int u8Len = WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (u8Len <= 0) return ansiStr;
+
+    std::string utf8(u8Len - 1, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, &utf8[0], u8Len, nullptr, nullptr);
+    return utf8;
+}
+
 OutputCallbacks::OutputCallbacks() : m_refCount(1) {
 }
 
@@ -53,8 +76,8 @@ STDMETHODIMP OutputCallbacks::Output(
     if (!Text) {
         return S_OK;
     }
-    
-    const std::string textStr(Text);
+
+    const std::string textStr = AnsiToUtf8(Text);
 
     // Check for various types of messages
     if (textStr.find("WARNING: .cache forcedecodeuser is not enabled") != std::string::npos) {
