@@ -68,7 +68,7 @@ public:
                 
                 // Create our custom output callback - use CComPtr for proper management
                 CComPtr<OutputCallbacks> callbacks;
-                callbacks = new OutputCallbacks();  // Don't use Attach() - new already sets refcount to 1
+                callbacks = new OutputCallbacks(true);  // Enable echo to WinDbg window
                 
                 // Set the output callbacks
                 hr = client->SetOutputCallbacks(callbacks);
