@@ -71,3 +71,34 @@ fffff800`00000000 fffff800`00a5c000   nt         (pdb symbols)
 - 向后兼容：`echoToWindbg` 默认为 `false`，不影响其他调用点
 - MCP 响应格式无变化，AI 客户端行为不变
 - 仅在 `CommandExecutor::ExecuteWithTimeout()` 中启用（`true`），其他场景保持原行为
+
+## 多 WinDbg 实例分析
+
+### Named Pipe 层面：单实例限制
+
+两个 WinDbg 进程加载同一个扩展 DLL，都执行 `!mcpstart`，第二个会失败：
+
+```
+WinDbg #1: !mcpstart → CreateNamedPipe(\\.\pipe\windbgmcp) → 成功，成为 pipe server
+WinDbg #2: !mcpstart → CreateNamedPipe(\\.\pipe\windbgmcp) → 失败（管道名已被占用）
+```
+
+`PIPE_UNLIMITED_INSTANCES` 仅允许**同一进程内**创建多个同名 pipe 实例供多客户端连接，不能跨进程共享同一个 pipe 名称。
+
+### Python MCP Server 层面：单连接
+
+Python 端连接的是 `\\.\pipe\windbgmcp` 这个固定名称，只能连到第一个启动 pipe server 的 WinDbg。
+
+### 回显功能本身：无额外影响
+
+`dprintf` 改动是进程内行为 —— 只是在输出捕获回调里多调了一个 `dprintf`。无论几个 WinDbg，各自的 `dprintf` 输出到各自的调试窗口，互不干扰。
+
+### 结论
+
+| 场景 | 结果 |
+|---|---|
+| 开 1 个 WinDbg，`!mcpstart` | 正常工作 |
+| 开 2 个 WinDbg，都 `!mcpstart` | 第二个 `CreateNamedPipe` 失败，pipe server 起不来 |
+| 开 2 个 WinDbg，仅一个 `!mcpstart` | 正常，另一个不受影响 |
+
+多 WinDbg 实例支持需要架构层面的改动（如给每个 WinDbg 分配不同的 pipe 名称、Python 端维护多连接池），不在此次回显功能范围内。
