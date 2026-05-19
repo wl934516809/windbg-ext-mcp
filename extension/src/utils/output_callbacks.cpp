@@ -29,7 +29,9 @@ static std::string AnsiToUtf8(const char* ansiStr) {
     return utf8;
 }
 
-OutputCallbacks::OutputCallbacks() : m_refCount(1) {
+OutputCallbacks::OutputCallbacks(bool echoToWindbg)
+    : m_refCount(1)
+    , m_echoToWindbg(echoToWindbg) {
 }
 
 OutputCallbacks::~OutputCallbacks() = default;
@@ -75,6 +77,13 @@ STDMETHODIMP OutputCallbacks::Output(
     // Append the output text to our buffer
     if (!Text) {
         return S_OK;
+    }
+
+    // Echo to WinDbg debugger window if enabled.
+    // Use raw ANSI Text (not UTF-8) because dprintf expects CP_ACP on Windows.
+    // Pass Text as argument, not format string, to avoid % interpretation.
+    if (m_echoToWindbg && *Text != '\0') {
+        dprintf("%s", Text);
     }
 
     const std::string textStr = AnsiToUtf8(Text);
