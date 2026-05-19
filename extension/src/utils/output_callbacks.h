@@ -20,7 +20,7 @@ constexpr size_t MAX_OUTPUT_SIZE = 1024 * 1024; // 1MB
  */
 class OutputCallbacks : public IDebugOutputCallbacks {
 public:
-    explicit OutputCallbacks(bool echoToWindbg = false);
+    OutputCallbacks();
     virtual ~OutputCallbacks();
 
     // IUnknown methods
@@ -51,7 +51,6 @@ public:
 private:
     std::string m_output;        ///< Buffer storing captured output
     LONG m_refCount;             ///< Reference count for COM interface
-    bool m_echoToWindbg;         ///< Whether to also echo output to WinDbg window
     bool m_extensionError{false}; ///< Flag indicating if an extension error occurred
     bool m_exportError{false};    ///< Flag indicating if an export error occurred
 }; 

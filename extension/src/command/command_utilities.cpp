@@ -68,7 +68,7 @@ public:
                 
                 // Create our custom output callback - use CComPtr for proper management
                 CComPtr<OutputCallbacks> callbacks;
-                callbacks = new OutputCallbacks(true);  // Enable echo to WinDbg window
+                callbacks = new OutputCallbacks();
                 
                 // Set the output callbacks
                 hr = client->SetOutputCallbacks(callbacks);
@@ -78,11 +78,12 @@ public:
                     return;
                 }
                 
-                // Echo the command being executed to WinDbg window
-                dprintf("[MCP] %s\n", command.c_str());
+                // Print command prefix to all clients (WinDbg window + our callback)
+                control->ControlledOutput(DEBUG_OUTCTL_ALL_CLIENTS, DEBUG_OUTPUT_NORMAL,
+                    "[MCP] %s\n", command.c_str());
 
-                // Execute the command
-                hr = control->Execute(DEBUG_OUTCTL_THIS_CLIENT, command.c_str(), DEBUG_EXECUTE_DEFAULT);
+                // Execute the command — output goes to ALL clients including WinDbg UI
+                hr = control->Execute(DEBUG_OUTCTL_ALL_CLIENTS, command.c_str(), DEBUG_EXECUTE_DEFAULT);
                 
                 // Get the output
                 std::string output = callbacks->GetOutput();

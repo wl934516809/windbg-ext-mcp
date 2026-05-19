@@ -29,9 +29,8 @@ static std::string AnsiToUtf8(const char* ansiStr) {
     return utf8;
 }
 
-OutputCallbacks::OutputCallbacks(bool echoToWindbg)
-    : m_refCount(1)
-    , m_echoToWindbg(echoToWindbg) {
+OutputCallbacks::OutputCallbacks()
+    : m_refCount(1) {
 }
 
 OutputCallbacks::~OutputCallbacks() = default;
@@ -77,15 +76,6 @@ STDMETHODIMP OutputCallbacks::Output(
     // Append the output text to our buffer
     if (!Text) {
         return S_OK;
-    }
-
-    // Echo to WinDbg window if enabled, with thread_local reentry guard.
-    // dprintf triggers Output() again, so the guard breaks the cycle after one hop.
-    thread_local bool s_inOutputEcho = false;
-    if (m_echoToWindbg && !s_inOutputEcho && *Text != '\0') {
-        s_inOutputEcho = true;
-        dprintf("%s", Text);
-        s_inOutputEcho = false;
     }
 
     const std::string textStr = AnsiToUtf8(Text);
